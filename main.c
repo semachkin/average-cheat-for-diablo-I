@@ -228,13 +228,16 @@ size_t getDiabloBaseAddress() {
         nameGetResult = GetModuleFileNameEx(diabloHandle, module, moduleName, MAX_PATH);
         if (!nameGetResult) return QUIT_MESSAGE;
 
-        if (strstr(moduleName, DIABLO_PROCESS_NAME) == NULL)
+        if (strstr(moduleName, DIABLO_PROCESS_NAME) == NULL) {
+
+            free(moduleName);
+            free(modules);
             return (uint_fast64_t)module;
+        }
     }
 
     free(moduleName);
     free(modules);
-
     return PROCESS_ERROR_CANNONT_FIND;
 }
 
