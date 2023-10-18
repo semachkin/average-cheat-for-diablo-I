@@ -218,25 +218,24 @@ size_t getDiabloBaseAddress() {
     uint32_t modulesCount, i;
     modulesCount = realSize / sizeof(HMODULE);
 
-    char *moduleName = malloc(MAX_PATH);
-
     for (i = 0; i < modulesCount; i++) {
         HMODULE module = modules[i];
+
+        char *moduleName = malloc(MAX_PATH);
 
         BOOL nameGetResult;
 
         nameGetResult = GetModuleFileNameEx(diabloHandle, module, moduleName, MAX_PATH);
         if (!nameGetResult) return QUIT_MESSAGE;
 
-        if (strstr(moduleName, DIABLO_PROCESS_NAME) == NULL) {
-
+        if (strstr(moduleName, DIABLO_PROCESS_NAME)) {
             free(moduleName);
             free(modules);
             return (uint_fast64_t)module;
         }
+        free(moduleName);
     }
 
-    free(moduleName);
     free(modules);
     return PROCESS_ERROR_CANNONT_FIND;
 }
