@@ -41,9 +41,11 @@ SHORT message;
 #pragma endregion
 
 #define InvalidateScreen() InvalidateRect(hWin, NULL, FALSE);
+#define WRITE_MEMORY(offset, ptr, size) WriteProcessMemory(diabloHandle, (LPVOID)(diabloBaseAddress + offset), ptr, size, EXTRA_BYTES)
 
 process_error_t checkDiabloProcess();
-error_status_t  setHealth();
+
+void obfuscateHealthCount(DWORD*);
 
 LRESULT CALLBACK WinProc(HWND hWin, UINT msg, WPARAM wPar, LPARAM lPar) {
 
@@ -57,7 +59,7 @@ LRESULT CALLBACK WinProc(HWND hWin, UINT msg, WPARAM wPar, LPARAM lPar) {
             
             switch (LOWORD(wPar)) {
                 case BUTTON_1_ACTIVATED:
-                    if (!diabloProcessActive) break;
+                    if (!diabloBaseAddress) break;
 
                     DWORD healthCount;
                     healthCount = atoi(healthBoxText);
@@ -68,7 +70,12 @@ LRESULT CALLBACK WinProc(HWND hWin, UINT msg, WPARAM wPar, LPARAM lPar) {
                         break;
                     }
                     
-                    setHealth(healthCount);
+                    obfuscateHealthCount(&healthCount);
+
+                    WRITE_MEMORY(DIABLO_HEALTH_ADDRESS_OFFSET, &healthCount, sizeof(DWORD)); // WRITE HEALTH
+
+                    message = QUIT_MESSAGE;
+                    InvalidateScreen();
                 break;
                 case BOX_1_ACTIVATED:
                     INT textLength;
@@ -274,25 +281,6 @@ process_error_t checkDiabloProcess() {
     }
 
     return PROCESS_ERROR_CANNONT_FIND;
-}
-
-void obfuscateHealthCount(DWORD*);
-
-error_status_t setHealth(DWORD count) {
-    if (!diabloBaseAddress) return PROCESS_ERROR_EXIT_UNSUCESSFUL;
-
-    obfuscateHealthCount(&count);
-
-    WriteProcessMemory(
-        diabloHandle, 
-        (LPVOID)(diabloBaseAddress + DIABLO_HEALTH_ADDRESS_OFFSET), 
-        (LPCVOID)&count,
-        sizeof(DWORD),
-        EXTRA_BYTES
-    );
-
-    message = QUIT_MESSAGE;
-    InvalidateScreen();
 }
 
 void obfuscateHealthCount(DWORD *countPtr) {
