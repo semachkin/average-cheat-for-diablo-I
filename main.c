@@ -212,7 +212,7 @@ size_t getDiabloBaseAddress() {
         SetLastError(PROCESS_ERROR_INVALID_HANDLE_VALUE);
         return QUIT_MESSAGE;
     }
-    DWORD modulesSize = 1024 * sizeof(HMODULE);
+    DWORD modulesSize = DIABLO_MODULES_COUNT * sizeof(HMODULE);
 
     HMODULE *modules = malloc(modulesSize);
 
@@ -222,10 +222,9 @@ size_t getDiabloBaseAddress() {
     enumResult = K32EnumProcessModules(diabloHandle, modules, modulesSize, &realSize);
     if (!enumResult) return QUIT_MESSAGE;
 
-    uint32_t modulesCount, i;
-    modulesCount = realSize / sizeof(HMODULE);
+    uint32_t i;
 
-    for (i = 0; i < modulesCount; i++) {
+    for (i = 0; i < DIABLO_MODULES_COUNT; i++) {
         HMODULE module = modules[i];
 
         char *moduleName = malloc(MAX_PATH);
