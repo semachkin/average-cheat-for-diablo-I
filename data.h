@@ -57,6 +57,8 @@ typedef unsigned int process_error_t;
 
 #define DIABLO_HEALTH_ADDRESS_OFFSET     0x002865E0
 
+#define DIABLO_MODULES_COUNT 4
+
 #define MESSAGE_NEED_OPEN_DIABLO 0x2001
 #define MESSAGE_WRONG_HEALTH     0x2002 
 #define MESSAGE_ERROR            0x2000
