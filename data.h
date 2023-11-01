@@ -12,7 +12,7 @@
 #define BOX_1_NAME          "health box"
 #define PROCESS_WAIT_TEXT   "need to start Diablo process"
 #define WRONG_HEALTH        "Wrong health count"
-#define DIABLO_PROCESS_NAME "Diablo_dump.exe"                 // SET THIS VALUE TO YOUR GAME FILE
+#define DIABLO_PROCESS_NAME "Diablo_dump.exe"                 // SET THIS VALUE TO YOUR GAME FILE NAME
 
 #define ZERO         0
 #define EXTRA_BYTES  ZERO
