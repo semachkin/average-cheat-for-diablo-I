@@ -20,8 +20,12 @@ HBRUSH hBrsh;
 RECT   rect;
 
 HWND hWin;
-HWND healthButton;
-HWND healthBox;
+HWND updateButton;
+
+HWND healthBox;;
+HWND strengthBox;
+HWND dexterityBox;
+HWND vitalityBox;
 
 BOOL quit;
 BOOL diabloProcessActive;
@@ -36,16 +40,30 @@ HANDLE         diabloHandle;
 size_t         diabloBaseAddress;
 
 LPSTR healthBoxText;
+LPSTR strengthBoxText;
+LPSTR dexterityBoxText;
+LPSTR vitalityBoxText;
+
 SHORT message;
+SHORT activatedButton;
 
 #pragma endregion
 
-#define InvalidateScreen() InvalidateRect(hWin, NULL, FALSE);
+#define InvalidateScreen() InvalidateRect(hWin, NULL, FALSE)
 #define WRITE_MEMORY(offset, ptr, size) WriteProcessMemory(diabloHandle, (LPVOID)(diabloBaseAddress + offset), ptr, size, EXTRA_BYTES)
 
 process_error_t checkDiabloProcess();
 
 void obfuscateHealthCount(DWORD*);
+
+void rewriteHealth();
+void rewriteStrength();
+void rewriteDexterity();
+void rewriteVitality();
+
+void drawTextA(LPSTR text, UINT16 x, UINT16 y);
+
+LPSTR checkBoxText(HWND *box);
 
 LRESULT CALLBACK WinProc(HWND hWin, UINT msg, WPARAM wPar, LPARAM lPar) {
 
@@ -58,33 +76,29 @@ LRESULT CALLBACK WinProc(HWND hWin, UINT msg, WPARAM wPar, LPARAM lPar) {
         case WM_COMMAND:
             
             switch (LOWORD(wPar)) {
-                case BUTTON_1_ACTIVATED:
+                case BUTTON_ACTIVATED:
                     if (!diabloBaseAddress) break;
 
-                    DWORD healthCount;
-                    healthCount = atoi(healthBoxText);
-
-                    if (healthCount == ZERO) {
-                        message = MESSAGE_WRONG_HEALTH;
-                        InvalidateScreen();
-                        break;
-                    }
-                    
-                    obfuscateHealthCount(&healthCount);
-
-                    WRITE_MEMORY(DIABLO_HEALTH_ADDRESS_OFFSET, &healthCount, sizeof(DWORD)); // WRITE HEALTH
-
-                    message = QUIT_MESSAGE;
-                    InvalidateScreen();
+                    rewriteHealth();
+                    rewriteStrength();
+                    rewriteDexterity();
+                    rewriteVitality();
                 break;
-                case BOX_1_ACTIVATED:
-                    INT textLength;
-
-                    textLength = GetWindowTextLength(healthBox);
+                case BOX_1_ACTIVATED: 
                     if (healthBoxText) free(healthBoxText);
-
-                    healthBoxText = malloc(++textLength);
-                    GetWindowTextA(healthBox, healthBoxText, textLength);
+                    healthBoxText = checkBoxText(&healthBox);
+                break;
+                case BOX_2_ACTIVATED: 
+                    if (strengthBoxText) free(strengthBoxText);
+                    strengthBoxText = checkBoxText(&strengthBox);
+                break;
+                case BOX_3_ACTIVATED:
+                    if (dexterityBoxText) free(dexterityBoxText);
+                    dexterityBoxText = checkBoxText(&dexterityBox);
+                break;
+                case BOX_4_ACTIVATED:
+                    if (vitalityBoxText) free(vitalityBoxText);
+                    vitalityBoxText = checkBoxText(&vitalityBox);
                 break;
             }
         break;
@@ -105,38 +119,48 @@ LRESULT CALLBACK WinProc(HWND hWin, UINT msg, WPARAM wPar, LPARAM lPar) {
                     break;
                     case MESSAGE_WRONG_HEALTH:     messageText = WRONG_HEALTH;
                     break;
+                    case MESSAGE_WRONG_STRENGTH:   messageText = WRONG_STRENGTH;
+                    break;
+                    case MESSAGE_WRONG_DEXTERITY:  messageText = WRONG_DEXTERITY;
+                    break;
+                    case MESSAGE_WRONG_VITALITY:   messageText = WRONG_VITALITY;
+                    break;
                 }
 
-                DrawText(decal, messageText, UNKNOWN_SIZE, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawText(decal, messageText, UNKNOWN_SIZE, &rect, DT_BOTTOM | DT_SINGLELINE);
             }
+
+            drawTextA(BOX_1_NAME, BOX_1_X_POSITION + BOX_WIDTH + BOX_X_OFFSET, BOX_1_Y_POSITION);
+            drawTextA(BOX_2_NAME, BOX_2_X_POSITION + BOX_WIDTH + BOX_X_OFFSET, BOX_2_Y_POSITION);
+            drawTextA(BOX_3_NAME, BOX_3_X_POSITION + BOX_WIDTH + BOX_X_OFFSET, BOX_3_Y_POSITION);
+            drawTextA(BOX_4_NAME, BOX_4_X_POSITION + BOX_WIDTH + BOX_X_OFFSET, BOX_4_Y_POSITION);
 
             EndPaint(hWin, &paint);
         break;
         case WM_CREATE:
 
-            healthButton = CreateWindowEx(
-                BUTTON_STYLE,
-                BUTTON_CLASS,
-                BUTTON_1_NAME,
-                WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                BUTTON_1_POSITION,
-                BUTTON_SIZE,
-                hWin,
-                (HMENU)BUTTON_1_ACTIVATED,
-                (HINSTANCE)GetWindowLongPtr(hWin, GWLP_HINSTANCE),
-                NULL
+            HINSTANCE windowPtr = (HINSTANCE)GetWindowLongPtr(hWin, GWLP_HINSTANCE);
+
+            #pragma region init windows
+
+            updateButton = CreateWindowEx(
+                BUTTON_STYLE, BUTTON_CLASS, BUTTON_NAME, BUTTON_EX_STYLE, BUTTON_POSITION, BUTTON_SIZE, hWin, (HMENU)BUTTON_ACTIVATED, windowPtr, NULL
             );
+
             healthBox = CreateWindowEx(
-                WS_EX_CLIENTEDGE,
-                BOX_CLASS,
-                VOID_STRING,
-                WS_CHILD | WS_VISIBLE,
-                BOX_1_POSITION, 
-                BOX_SIZE, 
-                hWin, 
-                (HMENU)BOX_1_ACTIVATED,
-                NULL_2X
+                WS_EX_CLIENTEDGE, BOX_CLASS, VOID_STRING, BOX_EX_STYLE, BOX_1_POSITION, BOX_SIZE, hWin, (HMENU)BOX_1_ACTIVATED, NULL_2X
             );
+            strengthBox = CreateWindowEx(
+                WS_EX_CLIENTEDGE, BOX_CLASS, VOID_STRING, BOX_EX_STYLE, BOX_2_POSITION, BOX_SIZE, hWin, (HMENU)BOX_2_ACTIVATED, NULL_2X
+            );
+            dexterityBox = CreateWindowEx(
+                WS_EX_CLIENTEDGE, BOX_CLASS, VOID_STRING, BOX_EX_STYLE, BOX_3_POSITION, BOX_SIZE, hWin, (HMENU)BOX_3_ACTIVATED, NULL_2X
+            );
+            vitalityBox = CreateWindowEx(
+                WS_EX_CLIENTEDGE, BOX_CLASS, VOID_STRING, BOX_EX_STYLE, BOX_4_POSITION, BOX_SIZE, hWin, (HMENU)BOX_4_ACTIVATED, NULL_2X
+            );
+
+            #pragma endregion
         default: return DefWindowProc (
             hWin, msg, wPar, lPar
         );
@@ -227,7 +251,7 @@ size_t getDiabloBaseAddress() {
     for (i = 0; i < DIABLO_MODULES_COUNT; i++) {
         HMODULE module = modules[i];
 
-        char *moduleName = malloc(MAX_PATH);
+        char moduleName[MAX_PATH];
 
         BOOL nameGetResult;
 
@@ -235,11 +259,9 @@ size_t getDiabloBaseAddress() {
         if (!nameGetResult) return QUIT_MESSAGE;
 
         if (strstr(moduleName, DIABLO_PROCESS_NAME)) {
-            free(moduleName);
             free(modules);
             return (uint_fast64_t)module;
         }
-        free(moduleName);
     }
 
     free(modules);
@@ -282,7 +304,100 @@ process_error_t checkDiabloProcess() {
     return PROCESS_ERROR_CANNONT_FIND;
 }
 
+void drawTextA(LPSTR text, UINT16 x, UINT16 y) {
+    for (LPCSTR c = text; *c; c++) {
+        TextOutA(decal, x, y, c, 1);
+
+        LPSIZE charSize = (LPSIZE)malloc(sizeof(SIZE));
+        GetTextExtentPoint32A(decal, c, 1, charSize);
+
+        x += charSize->cx;
+        free(charSize);
+    }
+}
+
+void rewriteHealth() {
+    DWORD healthCount;
+
+    healthCount = atoi(healthBoxText);
+
+    if (!healthCount) {
+        message = MESSAGE_WRONG_HEALTH;
+        InvalidateScreen();
+        return;
+    }
+
+    obfuscateHealthCount(&healthCount);
+
+    WRITE_MEMORY(DIABLO_HEALTH_ADDRESS_OFFSET,     &healthCount, sizeof(DWORD));
+    WRITE_MEMORY(DIABLO_MAX_HEALTH_ADDRESS_OFFSET, &healthCount, sizeof(DWORD));
+
+    message = QUIT_MESSAGE;
+    InvalidateScreen();
+}
+void rewriteStrength() {
+    DWORD strengthCount;
+
+    strengthCount = atoi(strengthBoxText);
+    if (!strengthCount) {
+        message = MESSAGE_WRONG_STRENGTH;
+        InvalidateScreen();
+        return;
+    }
+
+    WRITE_MEMORY(DIABLO_STRENGTH_ADDRESS_OFFSET,     &strengthCount, sizeof(DWORD));
+    WRITE_MEMORY(DIABLO_STRENGTH_CMP_ADDRESS_OFFSET, &strengthCount, sizeof(DWORD));
+
+    message = QUIT_MESSAGE;
+    InvalidateScreen();
+}
+void rewriteDexterity() {
+    DWORD dexterityCount;
+
+    dexterityCount = atoi(dexterityBoxText);
+    if (!dexterityCount) {
+        message = MESSAGE_WRONG_DEXTERITY;
+        InvalidateScreen();
+        return;
+    }
+
+    WRITE_MEMORY(DIABLO_DEXTERITY_ADDRESS_OFFSET,     &dexterityCount, sizeof(DWORD));
+    WRITE_MEMORY(DIABLO_DEXTERITY_CMP_ADDRESS_OFFSET, &dexterityCount, sizeof(DWORD));
+
+    message = QUIT_MESSAGE;
+    InvalidateScreen();
+}
+void rewriteVitality() {
+    DWORD vitalityCount;
+
+    vitalityCount = atoi(vitalityBoxText);
+    if (!vitalityCount) {
+        message = MESSAGE_WRONG_VITALITY;
+        InvalidateScreen();
+        return;
+    }
+
+    WRITE_MEMORY(DIABLO_VITALITY_ADDRESS_OFFSET,     &vitalityCount, sizeof(DWORD));
+    WRITE_MEMORY(DIABLO_VITALITY_CMP_ADDRESS_OFFSET, &vitalityCount, sizeof(DWORD));
+
+    message = QUIT_MESSAGE;
+    InvalidateScreen();
+}
+
+LPSTR checkBoxText(HWND *box) {
+    INT textLength;
+    LPSTR boxText;
+
+    textLength = GetWindowTextLength(*box);
+
+    boxText = (LPSTR)malloc(++textLength);
+
+    GetWindowTextA(*box, boxText, textLength);
+
+    return boxText;
+}
+
 void obfuscateHealthCount(DWORD *countPtr) {
-    double count = (double)*(countPtr);
-    *(countPtr) = (DWORD)(63.75 * count + 54.45);
+    double count = (double)*countPtr;
+    *countPtr = (DWORD)(63.75 * count + 54.45);
 }
