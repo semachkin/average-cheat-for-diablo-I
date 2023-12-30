@@ -6,7 +6,7 @@
 #define ERROR_MESSAGE       "error"
 #define WINDOW_CLASS        "wndclass"
 #define WINDOW_NAME         "diablo cheat window"
-#define DIABLO_PROCESS_NAME "Diablo_dump.exe"
+#define DIABLO_PROCESS_NAME "Diablo_dump.exe" // change this macros to your diablo exe file name
 
 #define BUTTON_CLASS        "button"
 #define BOX_CLASS           "edit"
